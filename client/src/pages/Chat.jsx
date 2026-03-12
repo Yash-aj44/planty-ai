@@ -1,12 +1,19 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import API from "../services/api";
-import ChatBubble from "../components/ChatBubble";
-import Sidebar from "../components/sidebar";
+import Sidebar from "../components/Sidebar";
+import "../styles/chat.css";
 
 function Chat() {
 
   const [message, setMessage] = useState("");
   const [chat, setChat] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  const bottomRef = useRef(null);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chat, loading]);
 
   const sendMessage = async () => {
 
@@ -16,28 +23,36 @@ function Chat() {
 
       const token = localStorage.getItem("token");
 
+      setChat(prev => [
+        ...prev,
+        { role: "user", text: message }
+      ]);
+
+      setLoading(true);
+
       const res = await API.post(
         "/chat",
         { message },
         {
           headers: {
-             Authorization: `Bearer ${token}`
+            Authorization: `Bearer ${token}`
           }
         }
       );
 
       setChat(prev => [
         ...prev,
-        { role: "user", text: message },
         { role: "bot", text: res.data.reply }
       ]);
 
+      setLoading(false);
       setMessage("");
 
-    } catch (error) {
+    } catch (err) {
 
-      console.error(error);
+      console.log(err);
       alert("AI request failed");
+      setLoading(false);
 
     }
 
@@ -45,35 +60,48 @@ function Chat() {
 
   return (
 
-    <div style={{ display: "flex" }}>
+    <div className="app">
 
       <Sidebar />
 
-      <div style={{ flex: 1, padding: "20px" }}>
+      <div className="chat-area">
 
-        <h1>Planty AI</h1>
-
-        <div>
+        <div className="messages">
 
           {chat.map((msg, i) => (
-            <ChatBubble
+
+            <div
               key={i}
-              role={msg.role}
-              text={msg.text}
-            />
+              className={msg.role === "user" ? "user-bubble" : "bot-bubble"}
+            >
+              {msg.text}
+            </div>
+
           ))}
+
+          {loading && (
+            <div className="bot-bubble">
+              Planty is thinking...
+            </div>
+          )}
+
+          <div ref={bottomRef}></div>
 
         </div>
 
-        <input
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          placeholder="Ask Planty something..."
-        />
+        <div className="input-area">
 
-        <button onClick={sendMessage}>
-          Send
-        </button>
+          <input
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            placeholder="Ask Planty anything..."
+          />
+
+          <button onClick={sendMessage}>
+            Send
+          </button>
+
+        </div>
 
       </div>
 
