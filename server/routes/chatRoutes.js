@@ -1,20 +1,22 @@
 const express = require("express");
 const axios = require("axios");
 const Message = require("../models/Message");
-const auth = require("../middleware/authMiddleware");
+const authMiddleware = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
-router.post("/", auth, async (req, res) => {
-
+router.post("/", authMiddleware, async (req, res) => {
   try {
-
     const { message } = req.body;
+
+    if (!message) {
+      return res.status(400).json({ message: "Message is required" });
+    }
 
     const response = await axios.post(
       "https://api.groq.com/openai/v1/chat/completions",
       {
-        model: "llama3-8b-8192",
+        model: "llama-3.1-8b-instant",
         messages: [{ role: "user", content: message }]
       },
       {
@@ -29,7 +31,7 @@ router.post("/", auth, async (req, res) => {
 
     await Message.create({
       userId: req.user.id,
-      message,
+      message: message,
       response: reply
     });
 
@@ -37,11 +39,13 @@ router.post("/", auth, async (req, res) => {
 
   } catch (error) {
 
+    console.log("CHAT ERROR:");
     console.log(error.response?.data || error.message);
-    res.status(500).json({ message: "AI request failed" });
 
+    res.status(500).json({
+      message: "AI request failed"
+    });
   }
-
 });
 
 module.exports = router;

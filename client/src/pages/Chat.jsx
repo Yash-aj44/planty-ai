@@ -1,9 +1,12 @@
 import { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import API from "../services/api";
 import Sidebar from "../components/Sidebar";
 import "../styles/chat.css";
 
 function Chat() {
+
+  const navigate = useNavigate();
 
   const [message, setMessage] = useState("");
   const [chat, setChat] = useState([]);
@@ -11,8 +14,22 @@ function Chat() {
 
   const bottomRef = useRef(null);
 
+  // Redirect if not logged in
   useEffect(() => {
+
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      navigate("/");
+    }
+
+  }, []);
+
+  // Auto scroll
+  useEffect(() => {
+
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+
   }, [chat, loading]);
 
   const sendMessage = async () => {
@@ -22,6 +39,12 @@ function Chat() {
     try {
 
       const token = localStorage.getItem("token");
+
+      if (!token) {
+        alert("Please login first");
+        navigate("/");
+        return;
+      }
 
       setChat(prev => [
         ...prev,
@@ -45,13 +68,21 @@ function Chat() {
         { role: "bot", text: res.data.reply }
       ]);
 
-      setLoading(false);
       setMessage("");
+      setLoading(false);
 
-    } catch (err) {
+    } catch (error) {
 
-      console.log(err);
-      alert("AI request failed");
+      console.log(error);
+
+      if (error.response?.status === 401) {
+        alert("Session expired. Please login again.");
+        localStorage.removeItem("token");
+        navigate("/");
+      } else {
+        alert("AI request failed");
+      }
+
       setLoading(false);
 
     }
